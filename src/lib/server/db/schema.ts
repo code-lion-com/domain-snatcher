@@ -28,6 +28,17 @@ export const watchedDomain = sqliteTable('watched_domain', {
 	lookupStatus: text('lookup_status').notNull().default('pending'),
 	lookupError: text('lookup_error'),
 	lastCheckedAt: integer('last_checked_at', { mode: 'timestamp_ms' }),
+	isExcluded: integer('is_excluded', { mode: 'boolean' }).notNull().default(false),
+	createdAt: integer('created_at', { mode: 'timestamp_ms' })
+		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
+		.notNull()
+});
+
+export const searchKeyword = sqliteTable('search_keyword', {
+	id: text('id')
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	keyword: text('keyword').notNull().unique(),
 	createdAt: integer('created_at', { mode: 'timestamp_ms' })
 		.default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
 		.notNull()

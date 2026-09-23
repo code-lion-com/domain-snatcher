@@ -4,20 +4,11 @@ import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { appSetting, watchedDomain } from '$lib/server/db/schema';
 import { refreshDomain } from '$lib/server/domain-refresh';
-
-function normalizeDomain(input: string): string {
-	return input
-		.trim()
-		.toLowerCase()
-		.replace(/^https?:\/\//, '')
-		.replace(/^www\./, '')
-		.replace(/\/.*$/, '');
-}
-
-const DOMAIN_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
+import { DOMAIN_PATTERN, normalizeDomain } from '$lib/server/domain-utils';
 
 export const load: PageServerLoad = async () => {
 	const domains = await db.query.watchedDomain.findMany({
+		where: eq(watchedDomain.isExcluded, false),
 		orderBy: asc(watchedDomain.expirationDate)
 	});
 	const lastWhoisCheck = await db.query.appSetting.findFirst({
@@ -79,11 +70,11 @@ export const actions: Actions = {
 	},
 
 	refreshAll: async () => {
-		const rows = await db.query.watchedDomain.findMany();
+		const rows = await db.query.watchedDomain.findMany({
+			where: eq(watchedDomain.isExcluded, false)
+		});
 
-		const results = await Promise.allSettled(
-			rows.map((row) => refreshDomain(row.id, row.domain))
-		);
+		const results = await Promise.allSettled(rows.map((row) => refreshDomain(row.id, row.domain)));
 		const failed = results.filter((r) => r.status === 'rejected').length;
 
 		await db

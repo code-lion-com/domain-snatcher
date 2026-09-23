@@ -133,7 +133,11 @@ async function lookupWhois(domain) {
 
 function formatDate(ms) {
 	if (!ms) return null;
-	return new Date(ms).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+	return new Date(ms).toLocaleDateString('en-US', {
+		year: 'numeric',
+		month: 'short',
+		day: 'numeric'
+	});
 }
 
 async function sendDomainAvailableEmail(domain, { title, expirationDateMs, domainAuthority }) {
@@ -172,7 +176,7 @@ async function sendDomainAvailableEmail(domain, { title, expirationDateMs, domai
 const db = new Database(path.resolve(projectRoot, env.DATABASE_URL || 'local.db'));
 const rows = db
 	.prepare(
-		'SELECT id, domain, lookup_status, title, domain_authority, expiration_date FROM watched_domain ORDER BY domain'
+		'SELECT id, domain, lookup_status, title, domain_authority, expiration_date FROM watched_domain WHERE is_excluded = 0 ORDER BY domain'
 	)
 	.all();
 const update = db.prepare(
@@ -224,11 +228,12 @@ for (const row of rows) {
 	await new Promise((r) => setTimeout(r, 300));
 }
 
-db.prepare('INSERT INTO app_setting (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(
-	'last_whois_check_at',
-	String(Date.now())
-);
+db.prepare(
+	'INSERT INTO app_setting (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+).run('last_whois_check_at', String(Date.now()));
 
 db.close();
 
-console.log(`Checked ${checked} domain(s): ${becameAvailable} newly available, ${errored} errored.`);
+console.log(
+	`Checked ${checked} domain(s): ${becameAvailable} newly available, ${errored} errored.`
+);

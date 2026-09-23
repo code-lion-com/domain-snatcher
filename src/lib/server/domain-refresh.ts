@@ -12,6 +12,8 @@ export async function refreshDomain(
 	{ fetchDomainAuthority = false }: { fetchDomainAuthority?: boolean } = {}
 ) {
 	const existing = await db.query.watchedDomain.findFirst({ where: eq(watchedDomain.id, id) });
+	if (existing?.isExcluded) return;
+
 	const previousStatus = existing?.lookupStatus ?? null;
 
 	const [whoisResult, siteInfo, domainAuthorityResult] = await Promise.allSettled([

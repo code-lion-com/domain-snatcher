@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { Button } from '$lib/components/ui/button';
 	import type { ActionData, PageData } from './$types';
@@ -57,6 +58,17 @@
 		<p class="mt-1 text-xs text-muted-foreground">
 			Whois last checked: {formatDateTime(data.lastWhoisCheckAt)}
 		</p>
+		<nav class="mt-3 flex gap-4 text-sm">
+			<a href={resolve('/')} class="font-medium underline">Domains</a>
+			<a
+				href={resolve('/keywords')}
+				class="text-muted-foreground hover:text-foreground hover:underline">Keywords</a
+			>
+			<a
+				href={resolve('/excluded')}
+				class="text-muted-foreground hover:text-foreground hover:underline">Excluded</a
+			>
+		</nav>
 	</header>
 
 	<form
