@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { Button } from '$lib/components/ui/button';
+	import ModeToggle from '$lib/components/mode-toggle.svelte';
 	import type { ActionData, PageData } from './$types';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
@@ -51,13 +52,18 @@
 
 <div class="mx-auto max-w-6xl px-4 py-10">
 	<header class="mb-8">
-		<h1 class="text-2xl font-semibold tracking-tight">Domain Snatcher</h1>
-		<p class="mt-1 text-sm text-muted-foreground">
-			Watch competitor domains and know the moment they're up for grabs.
-		</p>
-		<p class="mt-1 text-xs text-muted-foreground">
-			Whois last checked: {formatDateTime(data.lastWhoisCheckAt)}
-		</p>
+		<div class="flex items-start justify-between gap-4">
+			<div>
+				<h1 class="text-2xl font-semibold tracking-tight">Domain Snatcher</h1>
+				<p class="mt-1 text-sm text-muted-foreground">
+					Watch competitor domains and know the moment they're up for grabs.
+				</p>
+				<p class="mt-1 text-xs text-muted-foreground">
+					Whois last checked: {formatDateTime(data.lastWhoisCheckAt)}
+				</p>
+			</div>
+			<ModeToggle />
+		</div>
 		<nav class="mt-3 flex gap-4 text-sm">
 			<a href={resolve('/')} class="font-medium underline">Domains</a>
 			<a

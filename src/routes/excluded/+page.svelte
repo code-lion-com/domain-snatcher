@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import { Button } from '$lib/components/ui/button';
+	import ModeToggle from '$lib/components/mode-toggle.svelte';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -16,10 +17,16 @@
 
 <div class="mx-auto max-w-6xl px-4 py-10">
 	<header class="mb-8">
-		<h1 class="text-2xl font-semibold tracking-tight">Excluded domains</h1>
-		<p class="mt-1 text-sm text-muted-foreground">
-			Domains you've marked as not worth watching. They're never checked for whois or domain rating.
-		</p>
+		<div class="flex items-start justify-between gap-4">
+			<div>
+				<h1 class="text-2xl font-semibold tracking-tight">Excluded domains</h1>
+				<p class="mt-1 text-sm text-muted-foreground">
+					Domains you've marked as not worth watching. They're never checked for whois or domain
+					rating.
+				</p>
+			</div>
+			<ModeToggle />
+		</div>
 		<nav class="mt-3 flex gap-4 text-sm">
 			<a href={resolve('/')} class="text-muted-foreground hover:text-foreground hover:underline"
 				>Domains</a
