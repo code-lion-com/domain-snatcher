@@ -38,6 +38,11 @@
 		});
 	}
 
+	function formatCompactNumber(value: number | null): string {
+		if (value === null) return '—';
+		return new Intl.NumberFormat('en-US', { notation: 'compact' }).format(value);
+	}
+
 	function urgencyClass(days: number | null): string {
 		if (days === null) return 'text-muted-foreground';
 		if (days <= 6) return 'text-destructive font-semibold';
@@ -130,7 +135,7 @@
 			</form>
 		</div>
 		<div class="overflow-x-auto rounded-lg border">
-			<table class="w-full min-w-[640px] text-sm">
+			<table class="w-full min-w-[840px] text-sm">
 				<thead class="bg-muted/50 text-xs text-muted-foreground">
 					<tr>
 						<th class="px-4 py-2.5 text-left font-medium">Site</th>
@@ -139,6 +144,9 @@
 						<th class="px-4 py-2.5 text-left font-medium">Days left</th>
 						<th class="px-4 py-2.5 text-left font-medium">Registrar</th>
 						<th class="px-4 py-2.5 text-left font-medium">DR</th>
+						<th class="px-4 py-2.5 text-left font-medium">RD</th>
+						<th class="px-4 py-2.5 text-left font-medium">Backlinks</th>
+						<th class="px-4 py-2.5 text-left font-medium">Traffic</th>
 						<th class="px-4 py-2.5"></th>
 					</tr>
 				</thead>
@@ -189,6 +197,13 @@
 							</td>
 							<td class="px-4 py-2.5 text-muted-foreground">{d.registrar ?? '—'}</td>
 							<td class="px-4 py-2.5 text-muted-foreground">{d.domainAuthority ?? '—'}</td>
+							<td class="px-4 py-2.5 text-muted-foreground"
+								>{formatCompactNumber(d.referringDomains)}</td
+							>
+							<td class="px-4 py-2.5 text-muted-foreground">{formatCompactNumber(d.backlinks)}</td>
+							<td class="px-4 py-2.5 text-muted-foreground"
+								>{formatCompactNumber(d.organicTraffic)}</td
+							>
 							<td class="px-4 py-2.5">
 								<div class="flex items-center justify-end gap-1">
 									<form

@@ -3,7 +3,11 @@ import { db } from '$lib/server/db';
 import { watchedDomain } from '$lib/server/db/schema';
 import { lookupWhois } from '$lib/server/whois';
 import { lookupSiteInfo } from '$lib/server/site-info';
-import { lookupDomainAuthority } from '$lib/server/ahrefs';
+import {
+	lookupDomainAuthority,
+	lookupBacklinksStats,
+	lookupOrganicTraffic
+} from '$lib/server/ahrefs';
 import { sendDomainAvailableEmail } from '$lib/server/brevo';
 
 export async function refreshDomain(
@@ -16,16 +20,23 @@ export async function refreshDomain(
 
 	const previousStatus = existing?.lookupStatus ?? null;
 
-	const [whoisResult, siteInfo, domainAuthorityResult] = await Promise.allSettled([
-		lookupWhois(domain),
-		lookupSiteInfo(domain),
-		fetchDomainAuthority ? lookupDomainAuthority(domain) : Promise.resolve(null)
-	]);
+	const [whoisResult, siteInfo, domainAuthorityResult, backlinksStatsResult, organicTrafficResult] =
+		await Promise.allSettled([
+			lookupWhois(domain),
+			lookupSiteInfo(domain),
+			fetchDomainAuthority ? lookupDomainAuthority(domain) : Promise.resolve(null),
+			fetchDomainAuthority ? lookupBacklinksStats(domain) : Promise.resolve(null),
+			fetchDomainAuthority ? lookupOrganicTraffic(domain) : Promise.resolve(null)
+		]);
 
 	const whois = whoisResult.status === 'fulfilled' ? whoisResult.value : null;
 	const site = siteInfo.status === 'fulfilled' ? siteInfo.value : null;
 	const domainAuthority =
 		domainAuthorityResult.status === 'fulfilled' ? domainAuthorityResult.value : null;
+	const backlinksStats =
+		backlinksStatsResult.status === 'fulfilled' ? backlinksStatsResult.value : null;
+	const organicTraffic =
+		organicTrafficResult.status === 'fulfilled' ? organicTrafficResult.value : null;
 
 	const lookupStatus =
 		whoisResult.status === 'rejected' ? 'error' : whois?.available ? 'available' : 'ok';
@@ -40,6 +51,8 @@ export async function refreshDomain(
 			// Keep the existing (possibly manually-entered) value when Ahrefs has
 			// no key configured or the lookup fails, instead of clobbering it.
 			...(domainAuthority !== null ? { domainAuthority } : {}),
+			...(backlinksStats !== null ? backlinksStats : {}),
+			...(organicTraffic !== null ? { organicTraffic } : {}),
 			lookupStatus,
 			lookupError:
 				whoisResult.status === 'rejected'
