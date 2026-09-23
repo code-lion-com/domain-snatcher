@@ -35,10 +35,10 @@ export async function sendDomainAvailableEmail(
 			Accept: 'application/json'
 		},
 		body: JSON.stringify({
-			sender: { email: env.BREVO_SENDER_EMAIL, name: 'Equinoxe Domain Snatcher' },
+			sender: { email: env.BREVO_SENDER_EMAIL, name: 'Codelion Domain Snatcher' },
 			to: [{ email: env.BREVO_NOTIFY_EMAIL }],
 			subject: `${domain} is available!`,
-			htmlContent: `<p><strong>${domain}</strong> is now available to register.</p>${details.length ? `<ul>${details.join('')}</ul>` : ''}<p><a href="https://www.google.com/search?q=register+${encodeURIComponent(domain)}">Grab it before someone else does.</a></p>`
+			htmlContent: `<p><strong>${domain}</strong> is now available to register.</p>${details.length ? `<ul>${details.join('')}</ul>` : ''}`
 		})
 	});
 

@@ -212,7 +212,7 @@
 										>Available now!</span
 									>
 								{:else}
-									{days === null ? '—' : days < 0 ? `expired ${-days}d ago` : `${days}d`}
+									{days === null ? '—' : days < 0 ? `Days left: ${days}` : `${days}d`}
 								{/if}
 							</td>
 							<td class="px-4 py-2.5 text-muted-foreground">{d.registrar ?? '—'}</td>
