@@ -97,8 +97,86 @@ export interface WhoisResult {
 	raw: string;
 }
 
+// Some registries (e.g. Identity Digital's .care) have retired port-43 whois
+// in favor of RDAP-only, so the classic `whois` binary only ever gets back
+// the IANA referral stub for those TLDs, with no registrar/expiry fields.
+// This mirrors the referral IANA whois itself would normally follow, but
+// over RDAP: look up the registry's RDAP base URL from IANA's bootstrap
+// registry, then query it directly for the domain.
+let rdapBootstrap: Promise<Map<string, string>> | null = null;
+
+function loadRdapBootstrap(): Promise<Map<string, string>> {
+	if (!rdapBootstrap) {
+		rdapBootstrap = fetch('https://data.iana.org/rdap/dns.json', {
+			signal: AbortSignal.timeout(10_000)
+		})
+			.then((res) => res.json())
+			.then((data: { services: [string[], string[]][] }) => {
+				const map = new Map<string, string>();
+				for (const [tlds, urls] of data.services) {
+					for (const tld of tlds) map.set(tld, urls[0]);
+				}
+				return map;
+			})
+			.catch((error) => {
+				rdapBootstrap = null;
+				throw error;
+			});
+	}
+	return rdapBootstrap;
+}
+
+function extractVcardField(vcardArray: unknown, field: string): string | null {
+	if (!Array.isArray(vcardArray) || vcardArray[0] !== 'vcard' || !Array.isArray(vcardArray[1])) {
+		return null;
+	}
+	for (const entry of vcardArray[1]) {
+		if (Array.isArray(entry) && entry[0] === field && typeof entry[3] === 'string' && entry[3]) {
+			return entry[3];
+		}
+	}
+	return null;
+}
+
+async function lookupRdap(domain: string): Promise<WhoisResult | null> {
+	const tld = domain.split('.').at(-1);
+	if (!tld) return null;
+
+	const base = (await loadRdapBootstrap()).get(tld);
+	if (!base) return null;
+
+	const res = await fetch(`${base.replace(/\/$/, '')}/domain/${domain}`, {
+		signal: AbortSignal.timeout(15_000)
+	});
+
+	if (res.status === 404) {
+		return { available: true, expirationDate: null, registrar: null, raw: '' };
+	}
+	if (!res.ok) return null;
+
+	const data = await res.json();
+	const raw = JSON.stringify(data);
+
+	const expiryEvent = data.events?.find(
+		(event: { eventAction?: string }) => event.eventAction === 'expiration'
+	);
+	const registrarEntity = data.entities?.find((entity: { roles?: string[] }) =>
+		entity.roles?.includes('registrar')
+	);
+	const registrar = registrarEntity ? extractVcardField(registrarEntity.vcardArray, 'fn') : null;
+	const expirationDate = expiryEvent ? new Date(expiryEvent.eventDate) : null;
+
+	return {
+		available: false,
+		expirationDate: expirationDate && !isNaN(expirationDate.getTime()) ? expirationDate : null,
+		registrar,
+		raw
+	};
+}
+
 export async function lookupWhois(domain: string): Promise<WhoisResult> {
-	const raw = await runWhois(registrableDomain(domain));
+	const registrable = registrableDomain(domain);
+	const raw = await runWhois(registrable);
 
 	if (/no match for|not found|no entries found|domain not found|status:\s*free/i.test(raw)) {
 		return { available: true, expirationDate: null, registrar: null, raw };
@@ -106,6 +184,12 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
 
 	const expiryRaw = parseField(raw, EXPIRY_KEYS);
 	const registrar = parseField(raw, REGISTRAR_KEYS);
+
+	if (!expiryRaw && !registrar) {
+		const rdapResult = await lookupRdap(registrable).catch(() => null);
+		if (rdapResult) return rdapResult;
+	}
+
 	const expirationDate = expiryRaw ? new Date(expiryRaw) : null;
 
 	return {

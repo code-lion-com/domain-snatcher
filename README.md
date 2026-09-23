@@ -57,6 +57,8 @@ pnpm dev
 | `pnpm db:push`          | Push the Drizzle schema to the database            |
 | `pnpm db:studio`        | Open Drizzle Studio                                |
 | `pnpm check:domains`    | Run the WHOIS refresh/notification check manually  |
+| `pnpm check:dr`         | Refresh Domain Rating (Ahrefs) for all domains     |
+| `pnpm check:dr:missing` | Refresh Domain Rating only for domains missing it  |
 
 ## Environment variables
 
