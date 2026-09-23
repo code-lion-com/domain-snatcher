@@ -5,7 +5,7 @@ A small SvelteKit app for watching domain names and getting notified when they b
 ## Features
 
 - Track a list of watched domains and their expiration dates via WHOIS lookups
-- Optional Domain Rating lookup via the Ahrefs API
+- Optional Domain Rating, referring domains, backlinks, and organic traffic lookups via the Ahrefs API
 - Optional email notifications (via Brevo) when a watched domain becomes available
 - Email/password authentication via Better Auth
 
@@ -45,20 +45,23 @@ pnpm dev
 
 ## Scripts
 
-| Command               | Description                                      |
-| ---------------------- | ------------------------------------------------- |
-| `pnpm dev`              | Start the dev server                               |
-| `pnpm build`            | Build for production                               |
-| `pnpm preview`          | Preview the production build                       |
-| `pnpm check`            | Type-check the project                             |
-| `pnpm lint`             | Run Prettier and ESLint checks                     |
-| `pnpm format`           | Format the codebase                                |
-| `pnpm test`             | Run unit and e2e tests                             |
-| `pnpm db:push`          | Push the Drizzle schema to the database            |
-| `pnpm db:studio`        | Open Drizzle Studio                                |
-| `pnpm check:domains`    | Run the WHOIS refresh/notification check manually  |
-| `pnpm check:dr`         | Refresh Domain Rating (Ahrefs) for all domains     |
-| `pnpm check:dr:missing` | Refresh Domain Rating only for domains missing it  |
+| Command                      | Description                                                                        |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| `pnpm dev`                   | Start the dev server                                                               |
+| `pnpm build`                 | Build for production                                                               |
+| `pnpm preview`               | Preview the production build                                                       |
+| `pnpm check`                 | Type-check the project                                                             |
+| `pnpm lint`                  | Run Prettier and ESLint checks                                                     |
+| `pnpm format`                | Format the codebase                                                                |
+| `pnpm test`                  | Run unit and e2e tests                                                             |
+| `pnpm db:push`               | Push the Drizzle schema to the database                                            |
+| `pnpm db:studio`             | Open Drizzle Studio                                                                |
+| `pnpm check:domains`         | Run the WHOIS refresh/notification check manually                                  |
+| `pnpm check:dr`              | Refresh Domain Rating (Ahrefs) for all domains                                     |
+| `pnpm check:dr:missing`      | Refresh Domain Rating only for domains missing it                                  |
+| `pnpm check:metrics`         | Refresh referring domains, backlinks, and organic traffic (Ahrefs) for all domains |
+| `pnpm check:metrics:missing` | Refresh those metrics only for domains missing any of them                         |
+| `pnpm list:domains`          | Print watched domains with days left until expiration and Domain Rating            |
 
 ## Environment variables
 

@@ -1,5 +1,5 @@
 import { fail } from '@sveltejs/kit';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { appSetting, watchedDomain } from '$lib/server/db/schema';
@@ -9,7 +9,17 @@ import { DOMAIN_PATTERN, normalizeDomain } from '$lib/server/domain-utils';
 export const load: PageServerLoad = async () => {
 	const domains = await db.query.watchedDomain.findMany({
 		where: eq(watchedDomain.isExcluded, false),
-		orderBy: asc(watchedDomain.expirationDate)
+		// Sort by days left ascending (soonest-expiring first). Domains already
+		// available now are the most urgent despite having no expiration date;
+		// domains with no lookup data yet (pending/error) sort last.
+		orderBy: [
+			sql`case
+				when ${watchedDomain.lookupStatus} = 'available' then 0
+				when ${watchedDomain.expirationDate} is not null then 1
+				else 2
+			end`,
+			asc(watchedDomain.expirationDate)
+		]
 	});
 	const lastWhoisCheck = await db.query.appSetting.findFirst({
 		where: eq(appSetting.key, 'last_whois_check_at')

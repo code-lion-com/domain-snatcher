@@ -1,7 +1,7 @@
 {
 	"name": "domain-snatcher",
 	"private": true,
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -24,7 +24,8 @@
 		"check:dr": "node scripts/check-dr.mjs",
 		"check:dr:missing": "node scripts/check-dr.mjs --missing",
 		"check:metrics": "node scripts/check-metrics.mjs",
-		"check:metrics:missing": "node scripts/check-metrics.mjs --missing"
+		"check:metrics:missing": "node scripts/check-metrics.mjs --missing",
+		"list:domains": "node scripts/list-domains.mjs"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",

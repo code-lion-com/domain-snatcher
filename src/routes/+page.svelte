@@ -117,7 +117,11 @@
 			No domains yet. Add one above to start watching it.
 		</div>
 	{:else}
-		<div class="mb-3 flex justify-end">
+		<div class="mb-3 flex items-center justify-between">
+			<p class="text-sm text-muted-foreground">
+				{data.domains.length}
+				{data.domains.length === 1 ? 'domain' : 'domains'} tracked
+			</p>
 			<form
 				method="POST"
 				action="?/refreshAll"
@@ -143,10 +147,26 @@
 						<th class="px-4 py-2.5 text-left font-medium">Expires</th>
 						<th class="px-4 py-2.5 text-left font-medium">Days left</th>
 						<th class="px-4 py-2.5 text-left font-medium">Registrar</th>
-						<th class="px-4 py-2.5 text-left font-medium">DR</th>
-						<th class="px-4 py-2.5 text-left font-medium">RD</th>
-						<th class="px-4 py-2.5 text-left font-medium">Backlinks</th>
-						<th class="px-4 py-2.5 text-left font-medium">Traffic</th>
+						<th
+							class="px-4 py-2.5 text-left font-medium"
+							title="Domain Rating — Ahrefs' 0-100 score of a domain's backlink profile strength relative to other sites"
+							>DR</th
+						>
+						<th
+							class="px-4 py-2.5 text-left font-medium"
+							title="Referring Domains — number of unique domains with at least one backlink to this site"
+							>RD</th
+						>
+						<th
+							class="px-4 py-2.5 text-left font-medium"
+							title="Backlinks — total number of backlinks pointing to this site"
+							>Backlinks</th
+						>
+						<th
+							class="px-4 py-2.5 text-left font-medium"
+							title="Organic Traffic — estimated monthly organic search visits, per Ahrefs"
+							>Traffic</th
+						>
 						<th class="px-4 py-2.5"></th>
 					</tr>
 				</thead>
