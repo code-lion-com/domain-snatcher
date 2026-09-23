@@ -9,7 +9,7 @@
 
 	let adding = $state(false);
 	let refreshingAll = $state(false);
-	let removingId = $state<string | null>(null);
+	let excludingId = $state<string | null>(null);
 
 	function daysUntil(date: Date | string | null): number | null {
 		if (!date) return null;
@@ -187,12 +187,12 @@
 								<div class="flex items-center justify-end gap-1">
 									<form
 										method="POST"
-										action="?/remove"
+										action="?/exclude"
 										use:enhance={() => {
-											removingId = d.id;
+											excludingId = d.id;
 											return async ({ update }) => {
 												await update();
-												removingId = null;
+												excludingId = null;
 											};
 										}}
 									>
@@ -202,8 +202,8 @@
 											variant="ghost"
 											size="icon"
 											class="text-muted-foreground hover:text-destructive"
-											disabled={removingId === d.id}
-											aria-label="Remove {d.domain}"
+											disabled={excludingId === d.id}
+											aria-label="Exclude {d.domain}"
 										>
 											<Trash2 class="size-4" />
 										</Button>

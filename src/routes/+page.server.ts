@@ -45,12 +45,12 @@ export const actions: Actions = {
 		return { success: true };
 	},
 
-	remove: async ({ request }) => {
+	exclude: async ({ request }) => {
 		const formData = await request.formData();
 		const id = String(formData.get('id') ?? '');
 		if (!id) return fail(400, { error: 'Missing domain id' });
 
-		await db.delete(watchedDomain).where(eq(watchedDomain.id, id));
+		await db.update(watchedDomain).set({ isExcluded: true }).where(eq(watchedDomain.id, id));
 		return { success: true };
 	},
 

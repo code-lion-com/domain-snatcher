@@ -4,6 +4,7 @@
 // src/lib/server/{whois,brevo}.ts since those modules rely on SvelteKit's
 // `$env/dynamic/private` alias, which isn't available outside Vite.
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -129,6 +130,126 @@ async function lookupWhois(domain) {
 	};
 }
 
+// --- duckduckgo (mirrors src/lib/server/duckduckgo.ts) ---
+
+const DOMAIN_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
+
+// The HTML-only endpoint (no JS) returns result links wrapped in a redirect
+// like //duckduckgo.com/l/?uddg=<encoded-target-url>&rut=..., so the real
+// destination is pulled out of the `uddg` query param rather than the href.
+const RESULT_LINK_PATTERN = /uddg=([^&"]+)/g;
+
+function extractRegistrableDomain(encodedUrl) {
+	try {
+		const hostname = new URL(decodeURIComponent(encodedUrl)).hostname
+			.toLowerCase()
+			.replace(/^www\./, '');
+		if (!DOMAIN_PATTERN.test(hostname)) return null;
+		return registrableDomain(hostname);
+	} catch {
+		return null;
+	}
+}
+
+async function searchDuckDuckGo(keyword, limit = 20) {
+	const url = new URL('https://html.duckduckgo.com/html/');
+	url.searchParams.set('q', keyword);
+
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 10_000);
+
+	try {
+		const res = await fetch(url, {
+			signal: controller.signal,
+			headers: {
+				'user-agent': 'Mozilla/5.0 (compatible; domain-snatcher/1.0)',
+				accept: 'text/html'
+			}
+		});
+		if (!res.ok) throw new Error(`DuckDuckGo search returned ${res.status}`);
+		const html = await res.text();
+
+		const domains = new Set();
+		for (const match of html.matchAll(RESULT_LINK_PATTERN)) {
+			const domain = extractRegistrableDomain(match[1]);
+			if (domain) domains.add(domain);
+			if (domains.size >= limit) break;
+		}
+		return [...domains];
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
+// --- site info (mirrors src/lib/server/site-info.ts) ---
+
+async function fetchHtml(domain) {
+	for (const url of [`https://${domain}`, `http://${domain}`]) {
+		try {
+			const controller = new AbortController();
+			const timeout = setTimeout(() => controller.abort(), 8_000);
+			const res = await fetch(url, {
+				signal: controller.signal,
+				redirect: 'follow',
+				headers: { 'user-agent': 'Mozilla/5.0 (compatible; domain-snatcher/1.0)' }
+			});
+			clearTimeout(timeout);
+			if (res.ok) return await res.text();
+		} catch {
+			// try next scheme
+		}
+	}
+	return null;
+}
+
+async function lookupSiteInfo(domain) {
+	const html = await fetchHtml(domain);
+	const titleMatch = html?.match(/<title[^>]*>([^<]*)<\/title>/i);
+	const title = titleMatch ? titleMatch[1].trim().slice(0, 200) || null : null;
+
+	return {
+		title,
+		faviconUrl: `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(domain)}`
+	};
+}
+
+// --- ahrefs (mirrors src/lib/server/ahrefs.ts) ---
+
+const AHREFS_API_BASE = 'https://api.ahrefs.com/v3';
+
+function todayIso() {
+	return new Date().toISOString().slice(0, 10);
+}
+
+async function lookupDomainAuthority(domain) {
+	if (!env.AHREFS_API_KEY) return null;
+
+	const url = new URL(`${AHREFS_API_BASE}/site-explorer/domain-rating`);
+	url.searchParams.set('target', domain);
+	url.searchParams.set('date', todayIso());
+	url.searchParams.set('mode', 'subdomains');
+
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 10_000);
+
+	try {
+		const res = await fetch(url, {
+			signal: controller.signal,
+			headers: {
+				Authorization: `Bearer ${env.AHREFS_API_KEY}`,
+				Accept: 'application/json'
+			}
+		});
+		if (!res.ok) throw new Error(`Ahrefs API returned ${res.status}`);
+
+		const data = await res.json();
+		const rating = data.domain_rating?.domain_rating;
+		return typeof rating === 'number' ? Math.round(rating) : null;
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
 // --- brevo (mirrors src/lib/server/brevo.ts) ---
 
 function formatDate(ms) {
@@ -174,6 +295,54 @@ async function sendDomainAvailableEmail(domain, { title, expirationDateMs, domai
 // --- main ---
 
 const db = new Database(path.resolve(projectRoot, env.DATABASE_URL || 'local.db'));
+
+// --- discover new domains from search keywords ---
+
+const keywords = db.prepare('SELECT keyword FROM search_keyword').all();
+let discovered = 0;
+
+if (keywords.length > 0) {
+	const existingDomains = new Set(
+		db
+			.prepare('SELECT domain FROM watched_domain')
+			.all()
+			.map((r) => r.domain)
+	);
+
+	const settled = await Promise.allSettled(keywords.map((k) => searchDuckDuckGo(k.keyword)));
+	const found = new Set();
+	for (const result of settled) {
+		if (result.status === 'fulfilled') {
+			for (const domain of result.value) found.add(domain);
+		}
+	}
+
+	const insert = db.prepare(
+		'INSERT INTO watched_domain (id, domain, title, favicon_url, domain_authority) VALUES (?, ?, ?, ?, ?)'
+	);
+
+	for (const domain of found) {
+		if (existingDomains.has(domain)) continue;
+		existingDomains.add(domain);
+
+		const [siteInfo, domainAuthority] = await Promise.all([
+			lookupSiteInfo(domain).catch(() => null),
+			lookupDomainAuthority(domain).catch(() => null)
+		]);
+
+		insert.run(
+			randomUUID(),
+			domain,
+			siteInfo?.title ?? null,
+			siteInfo?.faviconUrl ?? `https://www.google.com/s2/favicons?sz=64&domain=${domain}`,
+			domainAuthority
+		);
+		discovered++;
+	}
+
+	if (discovered > 0) console.log(`Discovered ${discovered} new domain(s) from keyword search.`);
+}
+
 const rows = db
 	.prepare(
 		'SELECT id, domain, lookup_status, title, domain_authority, expiration_date FROM watched_domain WHERE is_excluded = 0 ORDER BY domain'
@@ -235,5 +404,5 @@ db.prepare(
 db.close();
 
 console.log(
-	`Checked ${checked} domain(s): ${becameAvailable} newly available, ${errored} errored.`
+	`Discovered ${discovered} new domain(s). Checked ${checked} domain(s): ${becameAvailable} newly available, ${errored} errored.`
 );
